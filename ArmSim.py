@@ -5,9 +5,9 @@ import math
 segment_lengths = [100, 80, 60]
 joint_angles = [45, -30, 20]  # Angles in degrees
 
-pixel_scalar = 80
+pixel_scalar = 65
 
-dim = (800, 600)
+dim = (600, 400)
 
 # Pygame setup
 pygame.init()
@@ -22,7 +22,7 @@ BLACK = (0, 0, 0)
 
 font = pygame.font.SysFont(None, 24)
 
-base_pos = (400, 300)
+base_pos = (dim[0]//2, dim[1]//2)
 
 a_1 = 1
 a_2 = 2
@@ -53,29 +53,41 @@ while running:
     x_f = (mouse_pos[0] - base_pos[0])
     y_f = -(mouse_pos[1] - base_pos[1])
 
+    gamma = math.atan2(y_f, x_f)
+    gamma = -math.pi /2 
+    
     try:
-        x_w = x_f - (a_4 * math.acos(math.atan2(y_f, x_f)))
-        y_w = y_f - (a_4 * math.asin(math.atan2(y_f, x_f)))
+        x_w = x_f - (a_4 * math.cos(gamma))
+        y_w = y_f - (a_4 * math.sin(gamma))
 
         r = math.sqrt((x_w ** 2) + (y_w ** 2))
 
         phi_2 = math.acos(((r ** 2) + (a_2 ** 2) - (a_3 ** 2)) / (2 * r * a_2))
         phi_1 = math.atan2(y_w, x_w)
 
-        theta_1 = phi_1 - phi_2
-
         phi_3 = math.acos(((a_2 ** 2) + (a_3 ** 2) - (r ** 2)) / (2 * a_2 * a_3))
 
-        theta_2 = math.pi - phi_3
-        theta_3 = math.atan2(y_f, x_f) - (theta_1 + theta_2)
+        # If x_f > 0, switch arm to elbow up position
+        # does not currently work
+        if x_f > 0:
+            theta_1 = phi_1 + phi_2  # Change subtraction to addition
+            theta_2 = -(math.pi - phi_3)  # Negate θ2 for elbow-up
+        else:
+            theta_1 = phi_1 - phi_2  # Default elbow-down
+            theta_2 = math.pi - phi_3  # Default elbow-down
+        # Compute theta_3 using the desired end-effector orientation
+        theta_3 = gamma - (theta_1 + theta_2)
 
         # Define the arm segments and angles
         segment_lengths = [a_2, a_3, a_4]
         joint_angles = [math.degrees(theta_1), math.degrees(theta_2), math.degrees(theta_3)]  # Angles in degrees
 
     except Exception:
+        theta_1 = 120
+        theta_2 = -100
+        theta_3 = -45
         segment_lengths = [a_2, a_3, a_4]
-        joint_angles = [90, 0, 0]
+        joint_angles = [theta_1, theta_2, theta_3]
 
     screen.fill(WHITE)
 
@@ -95,10 +107,17 @@ while running:
 
     # Display end effector and target position
     end_effector_pos = current_pos
+
+
+    # theta_add_text = font.render(f"theta add: {math.degrees(theta_1+theta_2+theta_3):.6}", True, BLACK)
+    gamma_text = font.render(f"gamma: {math.degrees(math.atan2(y_f, x_f)):.6}", True, BLACK)
     end_effector_text = font.render(f"End Effector: {end_effector_pos}", True, BLACK)
     target_text = font.render(f"Target: {mouse_pos}", True, BLACK)
     theta_text = font.render(f"Theta 1: {round(joint_angles[0], 2)}°, Theta 2: {round(joint_angles[1], 2)}°, Theta 3: {round(joint_angles[2], 2)}°", True, BLACK)
-    
+
+
+    # screen.blit(theta_add_text, (10, dim[1]-110))
+    screen.blit(gamma_text, (10, dim[1] - 90))
     screen.blit(end_effector_text, (10, dim[1] - 70))
     screen.blit(target_text, (10, dim[1] - 50))
     screen.blit(theta_text, (10, dim[1] - 30))
